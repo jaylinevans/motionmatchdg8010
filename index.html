@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Motion Match — Date Night Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F7F3EE;--blush:#E8D5C4;--rose:#C9857A;
+  --wine:#7A3B3B;--deep:#2A1F1F;--gold:#C4A76A;
+  --slate:#4A5568;--ink:#1A1410;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--cream);font-family:'DM Sans',sans-serif;color:var(--ink)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E")}
+
+/* BLOBS */
+.bg-blob{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;transition:all 1.8s cubic-bezier(.4,0,.2,1)}
+.blob-1{width:360px;height:360px;background:radial-gradient(circle,#E8D5C4 0%,transparent 70%);top:-80px;right:-60px;opacity:.7}
+.blob-2{width:280px;height:280px;background:radial-gradient(circle,#C9857A2A 0%,transparent 70%);bottom:40px;left:-60px;opacity:.6}
+.blob-3{width:220px;height:220px;background:radial-gradient(circle,#C4A76A1A 0%,transparent 70%);top:38%;left:28%;opacity:.5}
+
+/* SCREENS */
+#app{position:fixed;inset:0;z-index:1}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:40px 28px;opacity:0;transform:translateY(30px);
+  pointer-events:none;transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto}
+.screen.active{opacity:1;transform:translateY(0);pointer-events:all}
+.screen.exit{opacity:0;transform:translateY(-30px);transition:opacity .35s ease,transform .35s ease}
+
+/* PROGRESS */
+.progress-wrap{display:flex;align-items:center;gap:9px;margin-bottom:36px}
+.step-pip{width:20px;height:3px;border-radius:2px;background:var(--blush);transition:background .4s ease,width .35s ease}
+.step-pip.active{background:var(--rose);width:32px}
+.step-pip.done{background:var(--gold)}
+.progress-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);margin-left:4px;opacity:.65}
+
+/* TYPE */
+.eyebrow{font-size:10px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);margin-bottom:13px}
+.headline{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,8.5vw,44px);font-weight:300;
+  line-height:1.15;text-align:center;color:var(--deep);margin-bottom:10px}
+.headline em{font-style:italic;color:var(--rose)}
+.subtext{font-size:13px;font-weight:300;color:var(--slate);text-align:center;line-height:1.75;
+  max-width:280px;margin-bottom:26px}
+
+/* GESTURE ICON */
+.gesture-wrap{width:96px;height:96px;position:relative;margin:0 auto 24px;flex-shrink:0}
+.phone-body{width:40px;height:70px;border:2.5px solid var(--rose);border-radius:10px;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.phone-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);
+  position:absolute;bottom:7px;left:50%;transform:translateX(-50%)}
+.g-arrow{position:absolute;font-size:18px;color:var(--gold);opacity:.9}
+.g-left{left:2px;top:50%;transform:translateY(-50%);animation:g-l 1.8s ease-in-out infinite}
+.g-right{right:2px;top:50%;transform:translateY(-50%);animation:g-r 1.8s ease-in-out infinite .3s}
+.g-up{top:2px;left:50%;transform:translateX(-50%);animation:g-u 1.8s ease-in-out infinite}
+.g-down{bottom:2px;left:50%;transform:translateX(-50%);animation:g-d 1.8s ease-in-out infinite .3s}
+.shake-ring{position:absolute;inset:-14px;border-radius:50%;border:1.5px solid var(--rose);opacity:0;animation:ring-out 1.9s ease-out infinite}
+.shake-ring:nth-child(2){animation-delay:.55s}.shake-ring:nth-child(3){animation-delay:1.1s}
+@keyframes g-l{0%,100%{transform:translateY(-50%) translateX(0);opacity:.45}50%{transform:translateY(-50%) translateX(-7px);opacity:1}}
+@keyframes g-r{0%,100%{transform:translateY(-50%) translateX(0);opacity:.45}50%{transform:translateY(-50%) translateX(7px);opacity:1}}
+@keyframes g-u{0%,100%{transform:translateX(-50%) translateY(0);opacity:.45}50%{transform:translateX(-50%) translateY(-7px);opacity:1}}
+@keyframes g-d{0%,100%{transform:translateX(-50%) translateY(0);opacity:.45}50%{transform:translateX(-50%) translateY(7px);opacity:1}}
+@keyframes ring-out{0%{transform:scale(.55);opacity:.75}100%{transform:scale(1.7);opacity:0}}
+@keyframes phone-shake{0%,100%{transform:translate(-50%,-50%) rotate(0)}20%{transform:translate(-50%,-50%) rotate(-9deg)}40%{transform:translate(-50%,-50%) rotate(9deg)}60%{transform:translate(-50%,-50%) rotate(-6deg)}80%{transform:translate(-50%,-50%) rotate(4deg)}}
+.shaking .phone-body{animation:phone-shake .5s ease-in-out}
+
+/* LISTEN BADGE */
+.listen-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(201,133,122,.1);
+  border:1px solid rgba(201,133,122,.3);border-radius:20px;padding:7px 14px;font-size:11.5px;
+  color:var(--rose);margin-bottom:20px;animation:badge-pulse 2.2s ease-in-out infinite}
+.listen-dot{width:7px;height:7px;border-radius:50%;background:var(--rose);animation:dot-pulse 1.4s ease-in-out infinite}
+@keyframes badge-pulse{0%,100%{opacity:.65}50%{opacity:1}}
+@keyframes dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:12px;width:100%;max-width:320px}
+.btn-row-3{display:flex;gap:8px;width:100%;max-width:320px}
+.btn{flex:1;padding:14px 9px;border:1.5px solid var(--blush);border-radius:14px;
+  background:rgba(255,255,255,.52);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;color:var(--deep);
+  cursor:pointer;transition:all .22s ease;letter-spacing:.02em;line-height:1.4;text-align:center}
+.btn:active{transform:scale(.97);background:rgba(255,255,255,.82)}
+.btn:hover{border-color:var(--rose);color:var(--rose)}
+.btn small{display:block;font-size:10px;color:var(--slate);margin-top:3px;font-weight:300;letter-spacing:.04em}
+.btn-primary{flex:none;width:100%;max-width:320px;padding:17px;background:var(--wine);border:none;
+  border-radius:16px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13.5px;
+  font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  transition:all .22s ease;box-shadow:0 8px 28px rgba(122,59,59,.28)}
+.btn-primary:active{transform:scale(.98)}
+.or-divider{display:flex;align-items:center;gap:10px;width:100%;max-width:320px;
+  margin:14px 0;color:var(--slate);font-size:10.5px;letter-spacing:.1em;opacity:.5}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--blush)}
+
+/* MOTION BUTTON */
+.btn-motion-enable{width:100%;max-width:320px;padding:14px;background:rgba(196,167,106,.1);
+  border:1.5px solid rgba(196,167,106,.45);border-radius:14px;color:var(--gold);
+  font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;letter-spacing:.06em;
+  cursor:pointer;transition:all .22s ease;margin-bottom:12px}
+.btn-motion-enable:active{transform:scale(.97)}
+.btn-motion-enable:disabled{opacity:.45;cursor:default}
+.motion-status-note{font-size:11px;letter-spacing:.06em;margin-top:10px;min-height:16px;opacity:.75}
+
+/* SPLASH (page 1) */
+#screen-splash{background:var(--deep);z-index:10}
+#screen-splash .headline{color:var(--cream);font-size:clamp(38px,11vw,56px)}
+#screen-splash .headline em{color:var(--gold)}
+#screen-splash .subtext{color:rgba(247,243,238,.52)}
+#screen-splash .eyebrow{color:var(--gold)}
+#screen-splash .btn-primary{background:var(--gold);color:var(--deep);box-shadow:0 8px 28px rgba(196,167,106,.32)}
+.monogram{width:68px;height:68px;border:1.5px solid var(--gold);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 26px}
+.monogram svg{width:28px;height:28px;opacity:.82}
+
+/* EMBODIED PAGE (page 2) */
+#screen-intro{background:var(--cream)}
+.intro-card{background:rgba(255,255,255,.58);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(232,213,196,.7);border-radius:22px;padding:28px 24px;
+  width:100%;max-width:340px;margin-bottom:28px}
+.intro-card-eyebrow{font-size:9px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--rose);margin-bottom:10px}
+.intro-card-body{font-size:12.5px;font-weight:300;color:var(--slate);line-height:1.78}
+.intro-card-body strong{font-weight:500;color:var(--deep)}
+.gesture-row{display:flex;gap:10px;width:100%;max-width:340px;margin-bottom:24px}
+.gesture-pill{flex:1;background:rgba(255,255,255,.45);border:1px solid var(--blush);
+  border-radius:12px;padding:10px 8px;text-align:center}
+.gesture-pill-icon{font-size:18px;margin-bottom:4px;display:block;color:var(--gold);
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px}
+.gesture-pill-label{font-size:10px;color:var(--slate);letter-spacing:.04em;line-height:1.4}
+
+/* FLASH */
+.feedback-flash{position:fixed;inset:0;z-index:200;display:flex;align-items:center;
+  justify-content:center;pointer-events:none;opacity:0;transition:opacity .18s ease}
+.feedback-flash.show{opacity:1}
+.flash-label{font-family:'Cormorant Garamond',serif;font-size:clamp(32px,9vw,48px);
+  font-weight:300;font-style:italic;color:var(--rose);text-align:center;padding:18px 32px;
+  max-width:300px;background:rgba(247,243,238,.95);backdrop-filter:blur(18px);
+  border-radius:20px;border:1px solid var(--blush);box-shadow:0 12px 40px rgba(42,31,31,.1)}
+
+/* SUMMARY RIBBON */
+.summary-ribbon{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;min-height:24px}
+.s-chip{background:rgba(196,167,106,.14);border:1px solid rgba(196,167,106,.3);
+  border-radius:20px;padding:4px 10px;font-size:10px;color:var(--gold);letter-spacing:.05em}
+
+/* RESULT */
+#screen-result{justify-content:flex-start;padding-top:44px}
+.result-scroll{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center}
+.result-card{background:rgba(255,255,255,.62);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(232,213,196,.7);border-radius:24px;padding:28px 22px;width:100%;
+  max-width:340px;box-shadow:0 16px 48px rgba(42,31,31,.08);position:relative;overflow:hidden;margin-bottom:12px}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--rose),var(--gold))}
+.result-card-label{font-size:9.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);margin-bottom:10px}
+.result-idea{font-family:'Cormorant Garamond',serif;font-size:clamp(22px,6.5vw,30px);
+  font-weight:300;font-style:italic;line-height:1.22;color:var(--deep);margin-bottom:10px}
+.result-desc{font-size:12.5px;font-weight:300;color:var(--slate);line-height:1.72;margin-bottom:14px}
+.result-chips{display:flex;gap:6px;flex-wrap:wrap}
+.r-chip{background:rgba(42,31,31,.06);border-radius:20px;padding:4px 10px;font-size:10.5px;color:var(--slate);letter-spacing:.04em}
+.itinerary{width:100%;max-width:340px;background:rgba(255,255,255,.46);backdrop-filter:blur(14px);
+  border:1px solid rgba(232,213,196,.5);border-radius:20px;padding:18px 20px;margin-bottom:12px}
+.itinerary-title{font-size:9.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.itin-row{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(232,213,196,.5)}
+.itin-row:last-child{border-bottom:none;padding-bottom:0}
+.itin-time{font-size:11px;font-weight:500;color:var(--rose);min-width:48px;padding-top:2px;letter-spacing:.04em}
+.itin-text{font-size:12.5px;font-weight:300;color:var(--deep);line-height:1.55}
+.how-card{width:100%;max-width:340px;background:rgba(196,167,106,.07);
+  border:1px solid rgba(196,167,106,.25);border-radius:18px;padding:18px 20px;margin-bottom:12px}
+.how-card-title{font-size:9.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.how-row{display:flex;gap:12px;align-items:center;padding:5px 0}
+.how-icon{font-size:13px;min-width:20px;text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--rose)}
+.how-text{font-size:11.5px;font-weight:300;color:var(--slate);line-height:1.5}
+.how-text strong{color:var(--deep);font-weight:500}
+.logo-mark{font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--rose);opacity:.45;margin-top:4px;margin-bottom:20px}
+</style>
+</head>
+<body>
+
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+<div class="feedback-flash" id="flashOverlay"><div class="flash-label" id="flashLabel"></div></div>
+
+<div id="app">
+
+<!-- ═══════════════════════════════
+  PAGE 1 — SPLASH
+═══════════════════════════════ -->
+<div class="screen active" id="screen-splash">
+  <div class="monogram">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 6C16 6 8 10 8 18C8 22.4 11.6 26 16 26C20.4 26 24 22.4 24 18C24 10 16 6 16 6Z" stroke="#C4A76A" stroke-width="1.5"/>
+      <circle cx="16" cy="18" r="3" stroke="#C4A76A" stroke-width="1.5"/>
+    </svg>
+  </div>
+  <p class="eyebrow">An embodied interaction date builder</p>
+  <h1 class="headline">Motion<br><em>Match</em></h1>
+  <p class="subtext">One perfect date night, crafted by you. Let your moves decide what the night becomes.</p>
+
+  <button class="btn-motion-enable" id="btnEnableMotion" onclick="requestMotionPermission()" style="display:none">Enable Movement</button>
+  <button class="btn-primary" id="btnBegin" onclick="goTo('intro')">Begin →</button>
+  <p class="motion-status-note" id="motionStatusNote" style="color:rgba(247,243,238,.38)"></p>
+
+  <p style="position:absolute;bottom:24px;left:0;right:0;text-align:center;
+    font-size:10px;letter-spacing:.1em;color:rgba(247,243,238,.25);font-weight:300">
+    Created by Jaylin Evans &nbsp;·&nbsp; DG8010
+  </p>
+</div>
+
+<!-- ═══════════════════════════════
+  PAGE 2 — EMBODIED INTERACTION EXPLAINER
+═══════════════════════════════ -->
+<div class="screen" id="screen-intro">
+  <p class="eyebrow" style="margin-bottom:18px">Before you begin</p>
+  <h2 class="headline" style="margin-bottom:20px">What is<br><em>Embodied Interaction?</em></h2>
+
+  <div class="intro-card">
+    <p class="intro-card-eyebrow">The concept</p>
+    <p class="intro-card-body">
+      <strong>Embodied interaction</strong> is the idea that our bodies are not just input devices — they are part of how we think and decide. Rather than tapping a screen, you use physical movement: a tilt, a lift, a shake. The gesture itself becomes the choice.<br><br>
+      In Motion Match, each question is answered through a different movement. Your phone reads your motion and responds. The result is a date night that feels less like a search and more like something you physically shaped.
+    </p>
+  </div>
+
+  <div class="gesture-row">
+    <div class="gesture-pill"><span class="gesture-pill-icon">←→</span><span class="gesture-pill-label">Tilt left or right</span></div>
+    <div class="gesture-pill"><span class="gesture-pill-icon">↑↓</span><span class="gesture-pill-label">Lift or lower</span></div>
+    <div class="gesture-pill"><span class="gesture-pill-icon">~</span><span class="gesture-pill-label">Shake to surprise</span></div>
+    <div class="gesture-pill"><span class="gesture-pill-icon">↕</span><span class="gesture-pill-label">Tilt forward or back</span></div>
+  </div>
+
+  <p class="subtext" style="font-size:11.5px;margin-bottom:20px;opacity:.7">Buttons are always available if gestures aren't working on your device.</p>
+  <button class="btn-primary" onclick="goTo('step1')">Begin Crafting Your Date →</button>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 1 — VIBE  tilt L/R
+═══════════════════════════════ -->
+<div class="screen" id="screen-step1">
+  <div class="progress-wrap">
+    <div class="step-pip active"></div><div class="step-pip"></div><div class="step-pip"></div>
+    <div class="step-pip"></div><div class="step-pip"></div><div class="step-pip"></div>
+    <span class="progress-label">1 of 6</span>
+  </div>
+  <p class="eyebrow">Step one · The vibe</p>
+  <h2 class="headline">Set the<br><em>Mood</em></h2>
+  <div class="gesture-wrap"><div class="g-arrow g-left">←</div><div class="phone-body"><div class="phone-dot"></div></div><div class="g-arrow g-right">→</div></div>
+  <div class="listen-badge"><div class="listen-dot"></div>Tilt left or right…</div>
+  <p class="subtext" style="margin-bottom:20px">Tilt <strong>left</strong> for Romantic &nbsp;·&nbsp; <strong>right</strong> for Spontaneous</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row">
+    <button class="btn" onclick="sel('vibe','Romantic',1)">Romantic<small>Slow, intimate, tender</small></button>
+    <button class="btn" onclick="sel('vibe','Spontaneous',1)">Spontaneous<small>Bold, playful, unscripted</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 2 — SETTING  tilt F/B
+═══════════════════════════════ -->
+<div class="screen" id="screen-step2">
+  <div class="progress-wrap">
+    <div class="step-pip done"></div><div class="step-pip active"></div><div class="step-pip"></div>
+    <div class="step-pip"></div><div class="step-pip"></div><div class="step-pip"></div>
+    <span class="progress-label">2 of 6</span>
+  </div>
+  <div class="summary-ribbon" id="ribbon2"></div>
+  <p class="eyebrow">Step two · The setting</p>
+  <h2 class="headline">In or<br><em>Under the Sky?</em></h2>
+  <div class="gesture-wrap"><div class="g-arrow g-up">↑</div><div class="phone-body"><div class="phone-dot"></div></div><div class="g-arrow g-down">↓</div></div>
+  <div class="listen-badge"><div class="listen-dot"></div>Tilt forward or back…</div>
+  <p class="subtext" style="margin-bottom:20px">Tilt <strong>forward</strong> for Outdoors &nbsp;·&nbsp; <strong>back</strong> for Indoors</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row">
+    <button class="btn" onclick="sel('setting','Outdoors',2)">Outdoors<small>Open air, city, sky</small></button>
+    <button class="btn" onclick="sel('setting','Indoors',2)">Indoors<small>Curated, cozy spaces</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 3 — TIME OF DAY  shake
+═══════════════════════════════ -->
+<div class="screen" id="screen-step3">
+  <div class="progress-wrap">
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip active"></div>
+    <div class="step-pip"></div><div class="step-pip"></div><div class="step-pip"></div>
+    <span class="progress-label">3 of 6</span>
+  </div>
+  <div class="summary-ribbon" id="ribbon3"></div>
+  <p class="eyebrow">Step three · The hour</p>
+  <h2 class="headline">When Does<br><em>It Begin?</em></h2>
+  <div class="gesture-wrap" id="icon-shake" style="display:flex;align-items:center;justify-content:center;">
+    <div class="shake-ring"></div><div class="shake-ring"></div><div class="shake-ring"></div>
+    <div class="phone-body"><div class="phone-dot"></div></div>
+  </div>
+  <div class="listen-badge"><div class="listen-dot"></div>Shake for a surprise time…</div>
+  <p class="subtext" style="margin-bottom:20px">Shake your phone to let fate choose — or pick below</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row-3">
+    <button class="btn" onclick="sel('time','Golden Hour',3)">Golden Hour<small>5–8 pm</small></button>
+    <button class="btn" onclick="sel('time','Evening',3)">Evening<small>8–10 pm</small></button>
+    <button class="btn" onclick="sel('time','Late Night',3)">Late Night<small>After 10</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 4 — BUDGET  shake / tilt
+═══════════════════════════════ -->
+<div class="screen" id="screen-step4">
+  <div class="progress-wrap">
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip done"></div>
+    <div class="step-pip active"></div><div class="step-pip"></div><div class="step-pip"></div>
+    <span class="progress-label">4 of 6</span>
+  </div>
+  <div class="summary-ribbon" id="ribbon4"></div>
+  <p class="eyebrow">Step four · The spend</p>
+  <h2 class="headline">How Much<br><em>Tonight?</em></h2>
+  <div class="gesture-wrap" id="icon-budget" style="display:flex;align-items:center;justify-content:center;">
+    <div class="shake-ring"></div><div class="shake-ring"></div><div class="shake-ring"></div>
+    <div class="phone-body"><div class="phone-dot"></div></div>
+  </div>
+  <div class="listen-badge"><div class="listen-dot"></div>Shake to let fate decide…</div>
+  <p class="subtext" style="margin-bottom:20px">Shake for a surprise — or choose your range</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row-3">
+    <button class="btn" onclick="sel('budget','Free',4)">Free<small>$0–50</small></button>
+    <button class="btn" onclick="sel('budget','Mid',4)">Mid<small>$50–100</small></button>
+    <button class="btn" onclick="sel('budget','Splurge',4)">Splurge<small>$100+</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 5 — ENERGY  lift/lower
+═══════════════════════════════ -->
+<div class="screen" id="screen-step5">
+  <div class="progress-wrap">
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip done"></div>
+    <div class="step-pip done"></div><div class="step-pip active"></div><div class="step-pip"></div>
+    <span class="progress-label">5 of 6</span>
+  </div>
+  <div class="summary-ribbon" id="ribbon5"></div>
+  <p class="eyebrow">Step five · The tempo</p>
+  <h2 class="headline">High or<br><em>Low Gear?</em></h2>
+  <div class="gesture-wrap"><div class="g-arrow g-up">↑</div><div class="phone-body"><div class="phone-dot"></div></div><div class="g-arrow g-down">↓</div></div>
+  <div class="listen-badge"><div class="listen-dot"></div>Raise or lower your phone…</div>
+  <p class="subtext" style="margin-bottom:20px"><strong>Lift</strong> for High Energy &nbsp;·&nbsp; <strong>Lower</strong> for Low Energy</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row">
+    <button class="btn" onclick="sel('energy','High',5)">High Energy<small>Dance, move, explore</small></button>
+    <button class="btn" onclick="sel('energy','Low',5)">Low Energy<small>Linger, savour, unwind</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  STEP 6 — WILDCARD  tilt L/R
+═══════════════════════════════ -->
+<div class="screen" id="screen-step6">
+  <div class="progress-wrap">
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip done"></div>
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip active"></div>
+    <span class="progress-label">6 of 6</span>
+  </div>
+  <div class="summary-ribbon" id="ribbon6"></div>
+  <p class="eyebrow">Step six · The twist</p>
+  <h2 class="headline">One Last<br><em>Secret</em></h2>
+  <div class="gesture-wrap"><div class="g-arrow g-left">←</div><div class="phone-body"><div class="phone-dot"></div></div><div class="g-arrow g-right">→</div></div>
+  <div class="listen-badge"><div class="listen-dot"></div>Tilt left or right…</div>
+  <p class="subtext" style="margin-bottom:20px">Tilt <strong>left</strong> to keep it classic &nbsp;·&nbsp; <strong>right</strong> to add a wildcard rule</p>
+  <div class="or-divider">or choose</div>
+  <div class="btn-row">
+    <button class="btn" onclick="sel('wildcard','Classic',6)">Classic<small>Stick to the plan</small></button>
+    <button class="btn" onclick="sel('wildcard','Wildcard',6)">Wildcard<small>One surprise rule added</small></button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+  RESULT PAGE
+═══════════════════════════════ -->
+<div class="screen" id="screen-result">
+  <div class="progress-wrap" style="margin-bottom:16px">
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip done"></div>
+    <div class="step-pip done"></div><div class="step-pip done"></div><div class="step-pip done"></div>
+    <span class="progress-label">Your night</span>
+  </div>
+  <div class="result-scroll">
+    <p class="eyebrow" style="margin-bottom:10px">Your evening awaits</p>
+
+    <div class="result-card">
+      <p class="result-card-label" id="rLabel">—</p>
+      <p class="result-idea" id="rIdea">—</p>
+      <p class="result-desc" id="rDesc">—</p>
+      <div class="result-chips" id="rChips"></div>
+    </div>
+
+    <div class="itinerary">
+      <p class="itinerary-title">✦ Suggested Itinerary</p>
+      <div id="rItinRows"></div>
+    </div>
+
+    <div class="how-card">
+      <p class="how-card-title">How you got here</p>
+      <div id="howRows"></div>
+    </div>
+
+    <button class="btn-primary" onclick="restart()" style="margin-bottom:10px">Begin Again ↺</button>
+    <p class="logo-mark">Motion Match</p>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+/* ════════════════════════
+   STATE
+════════════════════════ */
+const S = {vibe:null,setting:null,time:null,budget:null,energy:null,wildcard:null};
+const TIMES = ['Golden Hour','Evening','Late Night'];
+const BUDGETS = ['Free','Mid','Splurge'];
+
+/* ════════════════════════
+   DATE IDEA POOL
+   Each idea: { idea, desc, chips, itin }
+   Keyed: POOL[vibe][setting][budget][energy] → array of ideas
+   Vibe: Romantic | Spontaneous
+   Setting: Outdoors | Indoors
+   Budget: Free | Mid | Splurge
+   Energy: High | Low
+════════════════════════ */
+const POOL = {
+Romantic:{
+  Outdoors:{
+    Free:{
+      High:[
+        {idea:"Sunset run along the waterfront, then street tacos",desc:"Lace up and chase the golden hour together. End with the city's best cheap tacos.",chips:["Active","Scenic","Free Entry"],itin:[["5:30 pm","Meet at the waterfront trail"],["6:15 pm","Pause to watch the sun drop"],["7:00 pm","Street taco stop"],["7:45 pm","Walk it off along the harbour"]]},
+        {idea:"Hike a nature trail and pack a simple lunch",desc:"Find a trail neither of you has walked. Bring sandwiches. Take your time.",chips:["Nature","Low Cost","Peaceful"],itin:[["10:00 am","Drive to the trailhead"],["10:30 am","Begin the hike"],["12:00 pm","Lunch at the summit"],["1:30 pm","Leisurely walk back"]]},
+        {idea:"Tandem bike ride on Toronto Islands",desc:"Rent a bike and wobble your way around the islands. Return by ferry at sunset.",chips:["Islands","Active","Scenic"],itin:[["3:00 pm","Ferry to the islands"],["3:30 pm","Rent bikes"],["5:00 pm","Watch sunset from the waterfront"],["6:00 pm","Ferry back"]]},
+        {idea:"Stargazing at Riverdale Park with wine and blankets",desc:"Drive to an elevated spot, spread a blanket, open something good, look up.",chips:["Stars","Quiet","Intimate"],itin:[["8:30 pm","Pack the blanket and a bottle"],["9:00 pm","Claim your spot"],["9:30 pm","Nothing to do but look up"],["11:00 pm","Late walk back to the car"]]},
+        {idea:"Stroll through Allan Gardens Conservatory",desc:"Free year-round indoor greenhouse — tropical warmth in the middle of the city.",chips:["Free","Botanical","Unhurried"],itin:[["2:00 pm","Arrive at Allan Gardens"],["2:15 pm","Wander the greenhouses slowly"],["3:30 pm","Coffee at a nearby café"],["4:00 pm","Walk back through Cabbagetown"]]}
+      ],
+      Low:[
+        {idea:"Blanket picnic in High Park at golden hour",desc:"Pick up cheese, bread, and something cold. Find a hill with a view and stay there.",chips:["Picnic","Slow","Intimate"],itin:[["5:00 pm","Gather provisions at a deli"],["5:45 pm","Find your spot in the park"],["6:30 pm","Watch the sky shift gold to blue"],["8:00 pm","Slow walk to the car"]]},
+        {idea:"Visit the Scarborough Bluffs at sunrise",desc:"Get up early. The bluffs at dawn are a different world — quiet, dramatic, just yours.",chips:["Sunrise","Dramatic","Worth It"],itin:[["6:00 am","Drive to the bluffs"],["6:30 am","Watch the sun rise over the water"],["8:00 am","Breakfast at a nearby diner"],["9:30 am","Walk the lower trail"]]},
+        {idea:"Sunset watch at Cherry Beach, then takeout",desc:"Simple and perfect. Watch the colours drain out of the sky, then order whatever sounds good.",chips:["Beach","Effortless","Warm"],itin:[["7:00 pm","Drive to Cherry Beach"],["7:30 pm","Settle in for the sunset"],["8:30 pm","Order takeout on the way home"],["9:00 pm","Eat at home with the window open"]]},
+        {idea:"Kensington Market wander and snacks",desc:"No agenda. Walk slowly, taste everything on offer, let the neighbourhood unfold.",chips:["Market","Free to Browse","Wandering"],itin:[["1:00 pm","Arrive at Kensington"],["1:30 pm","First snack stop"],["2:30 pm","Browse vintage shops"],["3:30 pm","Coffee and people-watching"]]}
+      ]
+    },
+    Mid:{
+      High:[
+        {idea:"Rooftop cocktails at The Broadview Hotel, then a walk",desc:"One of Toronto's best terraces. Drinks with a view, then wander the east end.",chips:["Rooftop","City Views","East End"],itin:[["7:00 pm","Arrive at The Broadview"],["7:30 pm","Cocktails on the rooftop"],["9:00 pm","Walk along Gerrard"],["9:30 pm","Dinner at a nearby spot"]]},
+        {idea:"Night market and rooftop bar crawl",desc:"Start at a night market for street food, then move up to a rooftop for drinks.",chips:["Street Food","Views","Lively"],itin:[["6:30 pm","Night market — eat everything"],["8:00 pm","First rooftop bar"],["9:30 pm","Second rooftop — share a bottle"],["11:00 pm","Walk home"]]},
+        {idea:"Farmers market stroll, then a wine bar",desc:"Browse the stalls, pick up a bottle, find a quiet wine bar and settle in.",chips:["Market","Wine","Easy"],itin:[["10:00 am","Kensington or St. Lawrence Market"],["11:30 am","Pick up provisions"],["1:00 pm","Wine bar for lunch"],["2:30 pm","Walk back slowly"]]},
+        {idea:"Bike the Martin Goodman Trail and stop for drinks",desc:"Rent bikes and ride the waterfront trail. Stop wherever a patio looks inviting.",chips:["Cycling","Waterfront","Spontaneous Stops"],itin:[["4:00 pm","Rent bikes at the waterfront"],["4:30 pm","Head west along the trail"],["6:00 pm","Find a patio for drinks"],["7:30 pm","Ride back at sunset"]]}
+      ],
+      Low:[
+        {idea:"Afternoon at the Aga Khan Museum gardens",desc:"Free to explore the grounds — serene, architectural, and unlike anywhere else in Toronto.",chips:["Culture","Gardens","Free Grounds"],itin:[["2:00 pm","Arrive at Aga Khan"],["2:30 pm","Explore the gardens and reflecting pools"],["4:00 pm","Coffee at the museum café"],["5:00 pm","Walk through the surrounding neighbourhood"]]},
+        {idea:"Distillery District walk and hot drinks",desc:"Cobblestone streets, independent galleries, and a café on every corner.",chips:["Distillery","Architectural","Cozy"],itin:[["3:00 pm","Arrive at the Distillery District"],["3:30 pm","Explore the galleries and shops"],["5:00 pm","Hot drinks at a café"],["6:00 pm","Walk to the waterfront"]]},
+        {idea:"Visit a flower market, then a quiet park bench",desc:"Pick up a small bouquet each. Find a bench. Sit with them.",chips:["Flowers","Slow","Thoughtful"],itin:[["11:00 am","St. Lawrence Market flower stalls"],["12:00 pm","Walk to a nearby park"],["12:30 pm","Find a bench with a view"],["1:30 pm","Light lunch nearby"]]}
+      ]
+    },
+    Splurge:{
+      High:[
+        {idea:"Private sunset sail on Lake Ontario with champagne",desc:"Charter a small sailboat for two. The city recedes, the water holds you, the sky performs.",chips:["Sailing","Golden Hour","Elevated"],itin:[["5:00 pm","Board at the marina"],["5:30 pm","Sail out as the sun drops"],["6:30 pm","Champagne mid-water"],["8:00 pm","Dinner at a waterfront restaurant"]]},
+        {idea:"Hot air balloon ride at dawn",desc:"Float over the countryside at sunrise. Champagne on landing is tradition.",chips:["Balloon","Sunrise","Unforgettable"],itin:[["5:30 am","Drive to the launch site"],["6:00 am","Pre-flight briefing"],["6:30 am","Lift off"],["8:00 am","Champagne breakfast on landing"]]},
+        {idea:"CN Tower EdgeWalk, then fine dining at Canoe",desc:"Walk the edge of the tower, then descend for one of the city's finest tables.",chips:["Thrilling","Iconic","Splurge"],itin:[["4:00 pm","CN Tower EdgeWalk"],["5:30 pm","Drinks at the bar"],["6:30 pm","Dinner at Canoe"],["9:00 pm","Night walk along the waterfront"]]}
+      ],
+      Low:[
+        {idea:"Garden tasting menu at a courtyard restaurant",desc:"A candlelit table in an outdoor courtyard. Small plates, seasonal produce, no clock.",chips:["Refined","Seasonal","Unhurried"],itin:[["6:30 pm","Arrive for aperitivo"],["7:00 pm","Tasting menu begins"],["9:30 pm","Digestif under the stars"],["10:30 pm","Slow walk home"]]},
+        {idea:"Spa day followed by a quiet dinner",desc:"Book side-by-side treatments, then find a calm restaurant to extend the softness of the day.",chips:["Wellness","Indulgent","Restorative"],itin:[["12:00 pm","Arrive at the spa"],["1:00 pm","Treatments begin"],["3:00 pm","Relaxation pool"],["6:00 pm","Quiet dinner for two"]]},
+        {idea:"Niagara-on-the-Lake wine tour and overnight stay",desc:"Drive to NOTL, visit two or three wineries, stay at a small inn, have no schedule for a day.",chips:["Wine Country","Getaway","Slow"],itin:[["10:00 am","Drive to NOTL"],["12:00 pm","First winery"],["2:30 pm","Second winery"],["5:00 pm","Check into the inn, dinner in town"]]}
+      ]
+    }
+  },
+  Indoors:{
+    Free:{
+      High:[
+        {idea:"Cook a new cuisine together with a full bottle of wine",desc:"Pick a country neither of you has cooked before. Make a mess. Eat at 9 pm.",chips:["Home","Hands-On","Playful"],itin:[["6:00 pm","Shop for ingredients"],["7:00 pm","Cook — wine first"],["8:30 pm","Eat by candlelight"],["9:30 pm","Disaster dessert attempt"]]},
+        {idea:"DIY spa night at home",desc:"Face masks, candles, a playlist, and absolutely nowhere to be.",chips:["Home","Restorative","Easy"],itin:[["7:00 pm","Set the mood — candles, music"],["7:30 pm","Face masks and a long bath"],["9:00 pm","Takeout in robes"],["10:00 pm","Movie or long conversation"]]},
+        {idea:"Bookstore scavenger hunt — pick a book for each other",desc:"Spend 20 minutes apart in a bookstore. Find the one book that says something about the other person.",chips:["Books","Thoughtful","Free to Browse"],itin:[["3:00 pm","Arrive at the bookstore"],["3:15 pm","Separate — 20 minutes each"],["3:45 pm","Reveal and explain your picks"],["4:30 pm","Coffee to discuss"]]},
+        {idea:"Puzzle night with snacks and a bottle",desc:"Find an interesting puzzle. Open something. Commit to finishing it tonight.",chips:["Cozy","Home","Unhurried"],itin:[["7:00 pm","Set up the puzzle"],["7:30 pm","Open the wine and begin"],["9:30 pm","Assess the chaos"],["11:00 pm","Give up gracefully or finish triumphantly"]]}
+      ],
+      Low:[
+        {idea:"Candlelit bath, takeout ramen, and a long talk",desc:"No screens. Just warm water, good noodles, and the conversation that never ends.",chips:["Intimate","Nourishing","Cozy"],itin:[["7:00 pm","Order the ramen"],["7:30 pm","Draw the bath"],["8:00 pm","Ramen in robes"],["9:30 pm","Long talk — no time check"]]},
+        {idea:"Themed movie night with matching food",desc:"Pick a setting — Paris, Tokyo, New York — and match the food and film to it.",chips:["Home","Cinematic","Creative"],itin:[["6:00 pm","Agree on the theme"],["6:30 pm","Make or order the food"],["7:30 pm","Film begins"],["10:00 pm","Dessert and debrief"]]},
+        {idea:"Recreate your first date at home",desc:"Whatever that was — order it, cook it, or find a version of it. Then talk about what has changed.",chips:["Nostalgic","Meaningful","Intimate"],itin:[["6:30 pm","Prepare the setting"],["7:00 pm","Recreated meal or drinks"],["8:00 pm","Tell each other what you remember"],["9:30 pm","Watch photos if you have them"]]}
+      ]
+    },
+    Mid:{
+      High:[
+        {idea:"Beginner salsa class, then tapas and sangria",desc:"Terrible dancing is still dancing. Find a drop-in class, embarrass yourselves, then eat.",chips:["Dance","Laughs","Latin Flavors"],itin:[["7:00 pm","Dance studio"],["8:30 pm","Walk to the tapas bar"],["9:00 pm","Sangria and small plates"],["10:30 pm","Practice your moves walking home"]]},
+        {idea:"Escape room followed by celebratory drinks",desc:"Work together. Probably fail. Celebrate anyway.",chips:["Puzzle","Teamwork","Fun"],itin:[["6:30 pm","Arrive at the escape room"],["7:00 pm","One hour of mild panic"],["8:30 pm","Debrief over cocktails"],["10:00 pm","Dessert"]]},
+        {idea:"Pottery class for two",desc:"Beginner wheel-throwing. You will both make something lopsided. It will be perfect.",chips:["Creative","Hands-On","Memorable"],itin:[["6:00 pm","Arrive at the pottery studio"],["6:30 pm","Class begins"],["8:30 pm","Wash up and see the results"],["9:00 pm","Dinner nearby"]]},
+        {idea:"Bowling at The Ballroom, then drinks upstairs",desc:"The Ballroom Bowl combines retro lanes with a proper cocktail bar above.",chips:["Bowling","Retro","Cocktails"],itin:[["7:00 pm","Arrive at The Ballroom"],["7:30 pm","Two games of bowling"],["9:00 pm","Move upstairs for cocktails"],["10:30 pm","Walk home"]]},
+        {idea:"Cat café visit followed by a board game café",desc:"Spend an hour with cats. Then spend an hour arguing over a board game.",chips:["Animals","Playful","Cozy"],itin:[["3:00 pm","Cat café — one hour"],["4:30 pm","Walk to Snakes and Lattes"],["5:00 pm","Pick a game — play at least two"],["7:00 pm","Dinner nearby"]]}
+      ],
+      Low:[
+        {idea:"Art gallery visit, then a wine bar with shared plates",desc:"Wander slowly through the galleries. Disagree about the paintings. Agree on the wine.",chips:["Culture","Slow Sip","Thoughtful"],itin:[["5:00 pm","Gallery — no rushing"],["7:00 pm","Walk to the wine bar"],["7:30 pm","Natural wine and charcuterie"],["9:00 pm","Dessert somewhere close"]]},
+        {idea:"AGO visit on free admission day, then dinner",desc:"The AGO offers free or reduced admission on certain days — check ahead. Then eat well nearby.",chips:["Art","Culture","Value"],itin:[["2:00 pm","AGO — take your time"],["5:00 pm","Café in the museum"],["6:30 pm","Dinner in Chinatown or Kensington"],["8:30 pm","Walk home via the neighbourhood"]]},
+        {idea:"LCBO cooking workshop and wine pairing",desc:"The LCBO runs regular cooking classes with wine pairing. Book ahead.",chips:["Cooking","Wine","Educational"],itin:[["6:00 pm","Arrive at the LCBO workshop"],["6:30 pm","Class and tasting begins"],["8:30 pm","Leave with new skills and a full stomach"],["9:00 pm","Nightcap nearby"]]}
+      ]
+    },
+    Splurge:{
+      High:[
+        {idea:"Chef's table tasting menu, then live jazz until midnight",desc:"Let the kitchen decide. Course after course, then lose yourselves in a jazz bar.",chips:["Upscale","Culinary","Musical"],itin:[["7:00 pm","Pre-dinner cocktail"],["7:30 pm","Chef's table begins"],["10:00 pm","Jazz club — first set"],["12:00 am","Nightcap and the slow walk home"]]},
+        {idea:"Private mixology class, then a rooftop bar",desc:"Build your own cocktails with a private bartender, then go show off.",chips:["Crafted","Interactive","Confident"],itin:[["7:00 pm","Mixology studio — 90 min"],["8:30 pm","Rooftop bar"],["9:00 pm","Order with suspicious confidence"],["10:30 pm","Nightcap"]]},
+        {idea:"Glass-blowing workshop for two",desc:"A private glass-blowing session — intense, focused, and you each make something to keep.",chips:["Creative","Hands-On","Unique"],itin:[["4:00 pm","Arrive at the studio"],["4:30 pm","Workshop begins"],["6:30 pm","Cool-down period — see your pieces"],["7:30 pm","Dinner to celebrate"]]}
+      ],
+      Low:[
+        {idea:"Private wine tasting, then a quiet omakase counter",desc:"An intimate guided pour, then a counter seat where the chef composes the night.",chips:["Curated","Refined","Sensory"],itin:[["6:30 pm","Wine tasting session"],["8:00 pm","Omakase counter"],["10:00 pm","Final course and sake"],["11:00 pm","Night walk"]]},
+        {idea:"Spa day with side-by-side massages, then fine dining",desc:"Book treatments at a proper spa, then close the day with a long, quiet dinner.",chips:["Wellness","Indulgent","Restorative"],itin:[["12:00 pm","Spa arrives — treatments at 1 pm"],["3:30 pm","Relaxation suite"],["6:00 pm","Fine dining reservation"],["9:00 pm","Nightcap at a hotel bar"]]},
+        {idea:"Late-night dessert omakase and rare whisky pairing",desc:"A dessert-only tasting menu exists. Find one. Order the whisky pairing. Stay until they close.",chips:["Indulgent","Rare","Night Owl"],itin:[["9:00 pm","Arrive — begin with a digestif"],["9:30 pm","First dessert course"],["10:30 pm","Whisky pairing"],["11:30 pm","Slow walk through the night"]]}
+      ]
+    }
+  }
+},
+
+Spontaneous:{
+  Outdoors:{
+    Free:{
+      High:[
+        {idea:"Thrift store challenge — pick an outfit for each other",desc:"Go to a thrift store with a $10 limit each. You dress the other person. Wear it to dinner.",chips:["Thrift","Challenge","Silly"],itin:[["2:00 pm","Arrive at the thrift store — split up"],["2:30 pm","Reveal the outfits"],["3:00 pm","Wear them to a café or walk"],["4:30 pm","Document it"]]},
+        {idea:"Bike ride to a neighbourhood you've never been to",desc:"Pick a direction on a map. Ride there. Explore until it gets dark.",chips:["Cycling","Discovery","No Plan"],itin:[["4:00 pm","Rent or bring bikes"],["4:30 pm","Point in a direction and go"],["6:00 pm","Find a spot to eat whatever's around"],["7:30 pm","Ride back"]]},
+        {idea:"Outdoor skating at a public rink",desc:"Find a public rink. Skate badly. Hold each other up. Hot chocolate after.",chips:["Skating","Winter","Free"],itin:[["3:00 pm","Arrive at the rink"],["3:30 pm","Skate for an hour or two"],["5:00 pm","Hot chocolate nearby"],["5:30 pm","Walk home"]]},
+        {idea:"Open mic comedy night at Absolute Comedy",desc:"Unpredictable, imperfect, and genuinely funny — admission is around $6.",chips:["Comedy","Cheap","Lively"],itin:[["7:30 pm","Doors open — grab a drink"],["8:00 pm","Show starts"],["9:30 pm","Post-show debrief"],["10:00 pm","Late-night snack nearby"]]}
+      ],
+      Low:[
+        {idea:"Drive somewhere new and eat at whatever's there",desc:"No destination. Pick a direction. Stop when something looks interesting.",chips:["Road Trip","Improvised","No Plan"],itin:[["6:00 pm","Fill the tank and make a playlist"],["7:00 pm","Stop wherever looks good"],["8:00 pm","Eat at whatever's there"],["9:30 pm","Drive back with the windows down"]]},
+        {idea:"Sunset watch at Riverdale Park with takeout",desc:"Pick up food from anywhere nearby, drive to Riverdale, watch the city go amber.",chips:["Sunset","Easy","Scenic"],itin:[["6:30 pm","Order takeout"],["7:00 pm","Drive to Riverdale Park"],["7:30 pm","Eat watching the city"],["9:00 pm","Walk back to the car slowly"]]},
+        {idea:"Visit a plant nursery and each pick one thing",desc:"A Sunday afternoon tradition for no reason. Each person buys one plant or one thing they like.",chips:["Plants","Slow","Simple"],itin:[["2:00 pm","Drive to the nursery"],["2:30 pm","Browse — no budget, just one item each"],["3:30 pm","Coffee on the way back"],["4:00 pm","Find homes for your plants"]]}
+      ]
+    },
+    Mid:{
+      High:[
+        {idea:"Night market, carnival games, and fried everything",desc:"Compete. Share something deep-fried and regrettable. Win something small.",chips:["Carnival","Vivid","Loud"],itin:[["7:00 pm","Arrive at the night market"],["7:30 pm","Eat your way through"],["8:30 pm","Games — best of three"],["9:30 pm","One last snack"]]},
+        {idea:"Rock climbing at an indoor gym, then beers after",desc:"Find a beginner bouldering gym. You'll be terrible and tired and happy.",chips:["Climbing","Active","Beers After"],itin:[["4:00 pm","Arrive at the climbing gym"],["4:30 pm","Beginner route — try everything"],["6:30 pm","Showers and beers at the gym bar"],["8:00 pm","Dinner nearby"]]},
+        {idea:"Trampoline park, then pizza",desc:"Jump for an hour like you have no concerns. Eat pizza like you deserve it.",chips:["Active","Silly","Earned"],itin:[["3:00 pm","Arrive at the trampoline park"],["3:30 pm","Jump for an hour"],["5:00 pm","Showers and rest"],["6:00 pm","Pizza — large, shared"]]},
+        {idea:"Mini golf, then cocktails at KOST",desc:"Competitive mini golf, then drinks at one of Toronto's best rooftop bars.",chips:["Playful","Rooftop","Competitive"],itin:[["5:00 pm","Mini golf"],["6:30 pm","Walk to KOST"],["7:00 pm","Rooftop cocktails"],["9:00 pm","Dinner nearby"]]}
+      ],
+      Low:[
+        {idea:"Lookout drive — find the highest point you can reach",desc:"Drive until you find elevation. Park. Look out. Put music on.",chips:["Scenic","Drive","Music"],itin:[["8:00 pm","Get in the car with a playlist"],["8:45 pm","Find the lookout"],["9:00 pm","Sit with the view"],["10:30 pm","Late-night diner on the way back"]]},
+        {idea:"Comedy show at The Second City, then drinks",desc:"One of Toronto's best comedy institutions. Always worth the ticket.",chips:["Comedy","Laughs","Toronto"],itin:[["7:00 pm","Arrive — dinner at the bar"],["8:00 pm","Show starts"],["9:30 pm","Post-show drinks nearby"],["11:00 pm","Walk back"]]},
+        {idea:"Tour a historic neighbourhood on foot",desc:"Cabbagetown, Rosedale, or the Annex — pick one you don't know well and walk its streets.",chips:["Walking","Architecture","Discovery"],itin:[["3:00 pm","Start at the neighbourhood entrance"],["4:00 pm","Explore at your own pace"],["5:30 pm","Coffee at a local café"],["6:30 pm","Dinner in the neighbourhood"]]}
+      ]
+    },
+    Splurge:{
+      High:[
+        {idea:"Helicopter tour over Toronto at dusk",desc:"The city looks completely different from above. Worth every dollar once.",chips:["Helicopter","Iconic","Once in a While"],itin:[["5:30 pm","Arrive at the helipad"],["6:00 pm","20-minute tour"],["7:00 pm","Drinks with a view"],["8:00 pm","Dinner — you've earned it"]]},
+        {idea:"CN Tower EdgeWalk, then Canoe restaurant",desc:"Walk the edge, then descend for one of the city's finest tables.",chips:["Thrilling","Iconic","Splurge"],itin:[["4:00 pm","EdgeWalk"],["5:30 pm","Drinks at the Tower bar"],["6:30 pm","Canoe reservation"],["9:00 pm","Waterfront walk"]]},
+        {idea:"Day trip to Niagara Falls with a winery stop",desc:"Drive down, see the falls, stop at a winery on the way back. An easy full day.",chips:["Road Trip","Winery","Classic"],itin:[["10:00 am","Drive to Niagara Falls"],["12:00 pm","Arrive — walk to the falls"],["2:00 pm","Drive through wine country"],["4:00 pm","Winery visit and tasting"]]}
+      ],
+      Low:[
+        {idea:"Private fire-pit dinner at a lodge outside the city",desc:"Book a lodge with an outdoor fire-pit experience. The stars come with it.",chips:["Escape","Fire","Quiet Luxury"],itin:[["4:00 pm","Drive out of the city"],["6:00 pm","Arrive and settle in"],["7:30 pm","Fire-pit dinner begins"],["10:00 pm","Nothing but the fire"]]},
+        {idea:"Weekend bed and breakfast in Prince Edward County",desc:"Book a small inn for one night. Vineyards, water, no agenda.",chips:["Getaway","Wine","Slow"],itin:[["10:00 am","Drive to PEC"],["12:00 pm","Arrive and check in"],["2:00 pm","Explore a winery"],["7:00 pm","Inn dinner, no plans after"]]},
+        {idea:"Spa weekend at a Muskoka resort",desc:"Two days of doing nothing well. Book ahead. Leave your phones in the room.",chips:["Muskoka","Spa","Restorative"],itin:[["10:00 am","Drive to Muskoka"],["12:00 pm","Check in"],["2:00 pm","First treatment"],["7:00 pm","Resort dinner"]]}
+      ]
+    }
+  },
+  Indoors:{
+    Free:{
+      High:[
+        {idea:"Karaoke at home — full commitment required",desc:"YouTube karaoke, a microphone if you have one, a scoring system if you're serious.",chips:["Home","Loud","Free"],itin:[["7:00 pm","Set up the TV and playlist"],["7:30 pm","Warm-up round"],["8:30 pm","Main event — full songs only"],["10:00 pm","Top 3 performances ranked"]]},
+        {idea:"Host a potluck for another couple",desc:"Cook one dish each. Invite another couple. Make it a recurring thing.",chips:["Social","Cooking","Connection"],itin:[["5:00 pm","Prep begins"],["7:00 pm","Guests arrive"],["7:30 pm","Food is served"],["10:00 pm","Games or long conversation"]]},
+        {idea:"Learn a TikTok dance together",desc:"Find one you like. Try to learn it. Fail spectacularly. Film it.",chips:["Home","Silly","Free"],itin:[["7:00 pm","Pick the dance"],["7:30 pm","First attempt (terrible)"],["8:30 pm","Improved attempt"],["9:00 pm","Film and send to no one"]]},
+        {idea:"Board game tournament — best of three",desc:"Pick three games neither of you is secretly a master at. Keep score. Take it seriously.",chips:["Home","Competitive","Snacks"],itin:[["7:00 pm","Select the games"],["7:30 pm","Game one"],["8:30 pm","Game two"],["9:30 pm","Tiebreaker if needed"]]}
+      ],
+      Low:[
+        {idea:"Vintage film at an indie cinema, then dessert",desc:"Find a repertory cinema. Watch something old. Eat something sweet after. Debate the ending.",chips:["Cinema","Nostalgic","Sweet"],itin:[["7:30 pm","Arrive for the showing"],["9:45 pm","Post-film argument"],["10:00 pm","Dessert bar — share everything"],["11:00 pm","Walk home still talking"]]},
+        {idea:"Recreate a restaurant meal at home on a budget",desc:"Pick a dish from a restaurant you love but can't afford. Cook it. Set the table properly.",chips:["Home","Creative","Meaningful"],itin:[["5:00 pm","Shop for ingredients"],["6:30 pm","Cook together"],["7:30 pm","Proper table, candles, the works"],["9:00 pm","Dessert and a film"]]},
+        {idea:"Read to each other — one chapter each",desc:"Pick a book neither of you has read. Take turns. No phones.",chips:["Quiet","Intimate","Unhurried"],itin:[["8:00 pm","Choose the book"],["8:30 pm","First reader — one chapter"],["9:00 pm","Second reader — one chapter"],["9:30 pm","Discuss what you read"]]}
+      ]
+    },
+    Mid:{
+      High:[
+        {idea:"Improv comedy show, then a craft cocktail bar",desc:"Laugh until your face hurts. Then find a bar where the menu has no familiar names.",chips:["Comedy","Surprising","Cocktails"],itin:[["7:30 pm","Doors open — drinks inside"],["8:00 pm","Show starts"],["9:30 pm","Cocktail bar"],["10:30 pm","Second round and debrief"]]},
+        {idea:"Axe throwing, then pizza and beers",desc:"Book a lane, throw axes, feel powerful, eat pizza.",chips:["Active","Unusual","Fun"],itin:[["6:00 pm","Arrive at the axe-throwing venue"],["6:30 pm","One hour of lanes"],["8:00 pm","Pizza and beers downstairs or nearby"],["9:30 pm","Walk home"]]},
+        {idea:"Comedy at Yuk Yuk's, then late-night eats",desc:"Professional comedians in a proper club. Usually two acts. Always worth it.",chips:["Comedy","Late Night","Toronto"],itin:[["8:00 pm","Arrive at Yuk Yuk's"],["8:30 pm","Show starts"],["10:00 pm","Walk to late-night restaurant"],["11:00 pm","Ramen, tacos, or pho"]]},
+        {idea:"Board game café at Snakes and Lattes",desc:"Huge game library, food and drinks, no agenda. Easy three hours.",chips:["Games","Cozy","No Plan"],itin:[["4:00 pm","Arrive — choose three games"],["4:30 pm","First game"],["6:00 pm","Order food"],["7:30 pm","Last game of the night"]]}
+      ],
+      Low:[
+        {idea:"Jazz bar — dark corner booth, shared bottle",desc:"Find the darkest corner. Order something interesting. Let the music fill the silence.",chips:["Jazz","Dim Lit","Intimate"],itin:[["8:30 pm","Arrive before the set"],["9:00 pm","First set — just listen"],["10:15 pm","Break — another round"],["10:30 pm","Second set"]]},
+        {idea:"Rooftop bar at KOST with the city below",desc:"One of Toronto's most atmospheric rooftop bars. Book ahead on weekends.",chips:["Rooftop","Views","Cocktails"],itin:[["7:30 pm","Arrive at KOST"],["8:00 pm","First round"],["9:00 pm","Second round and appetizers"],["10:00 pm","Walk along Queen after"]]},
+        {idea:"Distillery District galleries, then dinner",desc:"Several galleries to wander through in the Distillery. Dinner at one of the restaurants after.",chips:["Art","Distillery","Dinner"],itin:[["5:00 pm","Gallery 1 — take your time"],["6:30 pm","Gallery 2 or the Christmas Market"],["7:30 pm","Dinner in the district"],["9:30 pm","Walk home via the waterfront"]]}
+      ]
+    },
+    Splurge:{
+      High:[
+        {idea:"Private mixology class, then rooftop bar",desc:"Build cocktails with a private bartender. Go to a rooftop bar immediately after.",chips:["Crafted","Interactive","Fun Flex"],itin:[["7:00 pm","Mixology studio — 90 min"],["8:30 pm","Rooftop bar"],["9:00 pm","Order with confidence"],["10:30 pm","Nightcap"]]},
+        {idea:"Dinner at Canoe, then a jazz bar",desc:"One of Toronto's landmark restaurants with city views. Then disappear into a jazz bar.",chips:["Fine Dining","Jazz","Iconic"],itin:[["6:30 pm","Canoe reservation"],["9:00 pm","Digestif at the bar"],["9:30 pm","Jazz bar — first set"],["11:30 pm","Walk home"]]},
+        {idea:"Horseback riding lesson, then a farm dinner",desc:"Book a private lesson at a stable outside the city. Find a farm-to-table restaurant nearby.",chips:["Horses","Outdoorsy","Unique"],itin:[["10:00 am","Drive to the stable"],["11:00 am","Riding lesson"],["1:00 pm","Lunch at a farm restaurant"],["3:00 pm","Drive home slowly"]]}
+      ],
+      Low:[
+        {idea:"Omakase dinner — let the chef decide everything",desc:"Book a counter seat. Tell them your only restriction. Let them do the rest.",chips:["Omakase","Trusting","Refined"],itin:[["7:30 pm","Arrive and be seated"],["8:00 pm","First course"],["10:00 pm","Final course"],["11:00 pm","Walk and decompress"]]},
+        {idea:"Late-night dessert omakase and rare whisky",desc:"Some restaurants offer dessert-only tasting menus. Find one. Stay until they close.",chips:["Indulgent","Rare","Night Owl"],itin:[["9:00 pm","Arrive — digestif first"],["9:30 pm","Dessert courses begin"],["10:30 pm","Whisky pairing"],["11:30 pm","Walk through the quiet city"]]},
+        {idea:"Hotel staycation — order room service, do nothing",desc:"Book one night at a hotel in the city. Order room service. Use the pool. Have no plans.",chips:["Staycation","Indulgent","No Agenda"],itin:[["3:00 pm","Check in"],["4:00 pm","Pool or spa"],["7:00 pm","Room service dinner"],["10:00 pm","Nothing — that's the point"]]}
+      ]
+    }
+  }
+}
+};
+
+/* ════════════════════════
+   TIME MODIFIERS
+════════════════════════ */
+const TIME_MOD = {
+  'Golden Hour':{ prefix:"Start at dusk — ", suffix:" while the light is still gold.", hourShift:-1 },
+  'Evening':    { prefix:"",                 suffix:" as the city settles into night.",  hourShift:0  },
+  'Late Night': { prefix:"After 10 pm — ",   suffix:" when the city belongs to you.",   hourShift:3  }
+};
+
+/* ════════════════════════
+   WILDCARDS
+════════════════════════ */
+const WILDCARDS = [
+  "Bring a disposable camera. Phones stay in pockets all night.",
+  "Each person picks one mystery stop — kept secret until you arrive.",
+  "No GPS. Navigation by instinct and wrong turns only.",
+  "Cash only tonight. Leave the cards at home.",
+  "Neither of you is allowed to say 'I don't know' all evening.",
+  "Order something on every menu you've never tried. No exceptions.",
+  "You're strangers meeting for the first time. Stay in character for one hour.",
+  "No talking about work, plans, or the future — present moment only.",
+  "You must take one photo together at every stop. No selfies — ask a stranger.",
+  "One person plans the whole night in secret. The other finds out as it happens."
+];
+
+/* ════════════════════════
+   TRANSITIONS
+════════════════════════ */
+function goTo(id) {
+  const curr = document.querySelector('.screen.active');
+  if (curr) { curr.classList.add('exit'); setTimeout(()=>curr.classList.remove('active','exit'),400); }
+  setTimeout(()=>{ document.getElementById('screen-'+id).classList.add('active'); }, 180);
+}
+function flash(text) {
+  document.getElementById('flashLabel').textContent = text;
+  const o = document.getElementById('flashOverlay');
+  o.classList.add('show');
+  setTimeout(()=>o.classList.remove('show'), 850);
+}
+
+/* ════════════════════════
+   RIBBON
+════════════════════════ */
+const ICONS = {vibe:'Vibe',setting:'Setting',time:'Time',budget:'Budget',energy:'Energy'};
+function updateRibbons() {
+  for (let step=2;step<=6;step++) {
+    const el = document.getElementById('ribbon'+step);
+    if (!el) continue;
+    const keys=['vibe','setting','time','budget','energy'].slice(0,step-1);
+    el.innerHTML = keys.filter(k=>S[k]).map(k=>`<span class="s-chip">${S[k]}</span>`).join('');
+  }
+}
+
+/* ════════════════════════
+   SELECTION
+════════════════════════ */
+const STEP_IDS=['step1','step2','step3','step4','step5','step6'];
+function sel(key,value,stepNum) {
+  S[key]=value; flash(value); updateRibbons();
+  const next = stepNum<6 ? STEP_IDS[stepNum] : 'result';
+  setTimeout(()=>{ if(next==='result') buildResult(); goTo(next); }, 580);
+}
+
+/* ════════════════════════
+   RESULT BUILDER
+════════════════════════ */
+function shiftTime(str,h) {
+  if(!h) return str;
+  const m=str.match(/(\d+):(\d+)\s*(am|pm)/i);
+  if(!m) return str;
+  let hr=parseInt(m[1])+(m[3].toLowerCase()==='pm'&&m[1]!=='12'?12:0);
+  hr=((hr+h)%24+24)%24;
+  const sfx=hr>=12?'pm':'am';
+  const d=hr>12?hr-12:hr===0?12:hr;
+  return `${d}:${m[2]} ${sfx}`;
+}
+
+const BUDGET_LABELS = {'Free':'Free – $50','Mid':'$50–100','Splurge':'$100+'};
+
+function buildResult() {
+  const v  = S.vibe    || 'Romantic';
+  const st = S.setting || 'Indoors';
+  const b  = S.budget  || 'Mid';
+  const e  = S.energy  || 'High';
+  const t  = S.time    || 'Evening';
+  const w  = S.wildcard|| 'Classic';
+  const mod = TIME_MOD[t];
+
+  const pool = POOL[v][st][b][e];
+  const rec  = pool[Math.floor(Math.random()*pool.length)];
+
+  document.getElementById('rLabel').textContent = `${v} · ${st} · ${BUDGET_LABELS[b]}`;
+  document.getElementById('rIdea').textContent  = mod.prefix + rec.idea;
+  document.getElementById('rDesc').textContent  = rec.desc + mod.suffix;
+  document.getElementById('rChips').innerHTML   = [...rec.chips, t].map(c=>`<span class="r-chip">${c}</span>`).join('');
+
+  // Itinerary
+  const rows = rec.itin.map(([time,text])=>
+    `<div class="itin-row"><span class="itin-time">${shiftTime(time,mod.hourShift)}</span><span class="itin-text">${text}</span></div>`
+  ).join('');
+  document.getElementById('rItinRows').innerHTML = rows;
+
+  if(w==='Wildcard') {
+    const twist = WILDCARDS[Math.floor(Math.random()*WILDCARDS.length)];
+    document.getElementById('rItinRows').innerHTML +=
+      `<div class="itin-row" style="margin-top:8px;padding-top:12px;border-top:1px dashed rgba(196,167,106,.4)">
+        <span class="itin-time" style="color:var(--gold)">✦</span>
+        <span class="itin-text" style="color:var(--gold);font-style:italic">${twist}</span>
+       </div>`;
+  }
+
+  // How you got here
+  const gestures = {
+    vibe:'Tilt left / right', setting:'Tilt forward / back',
+    time:'Shake', budget:'Shake', energy:'Lift / lower', wildcard:'Tilt left / right'
+  };
+  const howData = [
+    {label:'Vibe',val:S.vibe,g:gestures.vibe},
+    {label:'Setting',val:S.setting,g:gestures.setting},
+    {label:'Time',val:S.time,g:gestures.time},
+    {label:'Budget',val:BUDGET_LABELS[S.budget],g:gestures.budget},
+    {label:'Energy',val:S.energy+' Energy',g:gestures.energy},
+    {label:'Twist',val:S.wildcard,g:gestures.wildcard}
+  ];
+  document.getElementById('howRows').innerHTML = howData.map(r=>
+    `<div class="how-row">
+      <span class="how-icon">·</span>
+      <span class="how-text"><strong>${r.label}:</strong> ${r.val} <span style="opacity:.55;font-size:10.5px">via ${r.g}</span></span>
+    </div>`
+  ).join('');
+}
+
+function restart() {
+  Object.keys(S).forEach(k=>S[k]=null);
+  goTo('splash');
+}
+
+/* ════════════════════════
+   MOTION
+════════════════════════ */
+const locks = {};
+
+function handleOrientation(e) {
+  const gamma=e.gamma, beta=e.beta;
+  const curr=document.querySelector('.screen.active');
+  if(!curr) return;
+  const id=curr.id;
+  if(id==='screen-step1'&&!locks.s1){
+    if(gamma<-22){locks.s1=true;sel('vibe','Romantic',1);}
+    else if(gamma>22){locks.s1=true;sel('vibe','Spontaneous',1);}
+  }
+  if(id==='screen-step2'&&!locks.s2){
+    if(beta<-20){locks.s2=true;sel('setting','Outdoors',2);}
+    else if(beta>70){locks.s2=true;sel('setting','Indoors',2);}
+  }
+  if(id==='screen-step5'&&!locks.s5){
+    if(beta<10){locks.s5=true;sel('energy','High',5);}
+    else if(beta>65){locks.s5=true;sel('energy','Low',5);}
+  }
+  if(id==='screen-step6'&&!locks.s6){
+    if(gamma<-22){locks.s6=true;sel('wildcard','Classic',6);}
+    else if(gamma>22){locks.s6=true;sel('wildcard','Wildcard',6);}
+  }
+}
+
+let lastShake=0;
+function handleMotion(e) {
+  const acc=e.accelerationIncludingGravity;
+  if(!acc) return;
+  const total=Math.abs(acc.x)+Math.abs(acc.y)+Math.abs(acc.z);
+  const now=Date.now();
+  if(total>30&&now-lastShake>1300){
+    lastShake=now;
+    const curr=document.querySelector('.screen.active');
+    if(!curr) return;
+    if(curr.id==='screen-step3'&&!locks.s3){
+      locks.s3=true;
+      sel('time',TIMES[Math.floor(Math.random()*TIMES.length)],3);
+    }
+    if(curr.id==='screen-step4'&&!locks.s4){
+      locks.s4=true;
+      sel('budget',BUDGETS[Math.floor(Math.random()*BUDGETS.length)],4);
+    }
+  }
+}
+
+const lockMap={
+  'screen-step1':'s1','screen-step2':'s2','screen-step3':'s3',
+  'screen-step4':'s4','screen-step5':'s5','screen-step6':'s6'
+};
+new MutationObserver(()=>{
+  document.querySelectorAll('.screen').forEach(s=>{
+    if(s.classList.contains('active')){const k=lockMap[s.id];if(k)delete locks[k];}
+  });
+}).observe(document.getElementById('app'),{subtree:true,attributes:true,attributeFilter:['class']});
+
+/* ════════════════════════
+   PERMISSION
+════════════════════════ */
+function setMotionStatus(granted) {
+  const note=document.getElementById('motionStatusNote');
+  const btn=document.getElementById('btnEnableMotion');
+  if(granted){
+    note.textContent='✦ Motion gestures active';
+    note.style.color='rgba(196,167,106,.7)';
+    if(btn) btn.style.display='none';
+  } else {
+    note.textContent='Gestures unavailable — using buttons';
+    note.style.color='rgba(247,243,238,.35)';
+    document.querySelectorAll('.listen-badge').forEach(b=>b.style.display='none');
+  }
+}
+function attachListeners(){
+  window.addEventListener('deviceorientation',handleOrientation,true);
+  window.addEventListener('devicemotion',handleMotion,true);
+}
+function requestMotionPermission(){
+  const btn=document.getElementById('btnEnableMotion');
+  btn.textContent='Requesting…';btn.disabled=true;
+  Promise.all([DeviceOrientationEvent.requestPermission(),DeviceMotionEvent.requestPermission()])
+    .then(([o,m])=>{if(o==='granted'&&m==='granted'){attachListeners();setMotionStatus(true);}else setMotionStatus(false);})
+    .catch(()=>setMotionStatus(false));
+}
+function initMotion(){
+  const needsPerm=typeof DeviceOrientationEvent!=='undefined'&&
+    typeof DeviceOrientationEvent.requestPermission==='function';
+  if(needsPerm){
+    document.getElementById('btnEnableMotion').style.display='block';
+  } else if(typeof DeviceOrientationEvent!=='undefined'){
+    attachListeners();
+    let got=false;
+    const probe=e=>{if(e.gamma!==null)got=true;};
+    window.addEventListener('deviceorientation',probe,{once:true});
+    setTimeout(()=>{window.removeEventListener('deviceorientation',probe);setMotionStatus(got);},900);
+  } else {
+    setMotionStatus(false);
+  }
+}
+initMotion();
+</script>
+</body>
+</html>
